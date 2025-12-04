@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>極速車業管理 — 精緻 RWD 可嵌入版（含工單 Modal / 列印 / 採購）</title>
+
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root{--bg:#0f1724;--sidebar:#061526;--card:#ffffff;--muted:#6b7280;--accent:#06b6d4;--accent-2:#60a5fa;--text-dark:#0b1220}
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%}
+    body{font-family:'Inter','微軟正黑體',sans-serif;background:#f3f7fb;color:var(--text-dark);-webkit-font-smoothing:antialiased}
+    .app{display:flex;min-height:100vh}
+    .sidebar{width:280px;background:linear-gradient(180deg,var(--sidebar),#081421);color:#e6eef5;padding:24px 18px;display:flex;flex-direction:column;gap:18px;position:fixed;left:0;top:0;bottom:0}
+    .brand{display:flex;gap:12px;align-items:center}
+    .logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-weight:700;color:#022}
+    .nav{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+    .nav button{background:transparent;border:none;color:rgba(230,238,245,0.9);padding:10px;border-radius:8px;text-align:left;display:flex;gap:10px;align-items:center;cursor:pointer;font-weight:600}
+    .nav .group-title{font-size:12px;color:rgba(230,238,245,0.45);padding:8px 4px;margin-top:6px}
+    .nav button.active{background:linear-gradient(90deg, rgba(6,182,212,0.12), rgba(96,165,250,0.06));box-shadow:0 8px 30px rgba(2,6,23,0.25);color:#fff}
+    .sidebar .footer{margin-top:auto;font-size:12px;color:rgba(230,238,245,0.6)}
+    .main{margin-left:280px;flex:1;padding:26px 28px 80px 28px;transition:all .2s}
+    .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;gap:12px}
+    .title h2{font-size:20px}
+    .controls{display:flex;gap:8px;align-items:center}
+    .btn{background:linear-gradient(90deg,var(--accent),var(--accent-2));border:none;padding:9px 12px;border-radius:10px;color:#012;font-weight:700;cursor:pointer}
+    .btn.ghost{background:transparent;border:1px solid rgba(12,20,30,0.06);color:var(--text-dark);font-weight:600}
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+    .card{background:var(--card);border-radius:12px;padding:16px;box-shadow:0 8px 24px rgba(11,18,32,0.04);border:1px solid rgba(15,23,42,0.02)}
+    .col-3{grid-column:span 3}.col-4{grid-column:span 4}.col-6{grid-column:span 6}.col-8{grid-column:span 8}.col-12{grid-column:span 12}
+    .stat{display:flex;justify-content:space-between;align-items:center}.big{font-size:20px;font-weight:800;color:#0b1220}
+    .list-item{display:flex;align-items:center;gap:12px;padding:10px;border-radius:8px;background:linear-gradient(180deg,#fbfcfd,#fff);border:1px solid rgba(10,20,30,0.03);margin-bottom:8px}
+    .badge{font-size:12px;padding:6px 8px;border-radius:999px;background:#eef7f7;color:#065f5f;border:1px solid rgba(6,95,95,0.08)}
+    .muted{color:var(--muted);font-size:13px}
+    table{width:100%;border-collapse:collapse}thead th{font-size:13px;color:var(--muted);text-align:left;padding:10px 8px}tbody td{padding:10px 8px;border-top:1px solid rgba(15,23,42,0.03);font-size:14px}
+    @media (max-width:1000px){.sidebar{position:relative;width:100%;height:auto;display:flex;flex-direction:row;overflow:auto;padding:12px}.main{margin-left:0;padding:14px}.grid{grid-template-columns:repeat(6,1fr)}.col-4{grid-column:span 6}.col-3{grid-column:span 3}}
+    @media (max-width:600px){.nav{flex-direction:row;gap:6px}.nav button{padding:8px 10px;font-size:13px}.grid{grid-template-columns:repeat(1,1fr)}.col-3,.col-4,.col-6{grid-column:span 1}.title h2{font-size:16px}}
+
+    .searchbox{display:flex;gap:8px;align-items:center;background:var(--card);border-radius:10px;padding:6px 8px;border:1px solid rgba(15,23,42,0.04)}.searchbox input{border:none;outline:none;padding:8px;background:transparent}
+    .small{font-size:12px;color:var(--muted)}.space-y{display:flex;flex-direction:column;gap:8px}
+
+    /* modal */
+    .modal-overlay{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,0.45);z-index:999;align-items:center;justify-content:center;padding:20px}
+    .modal{background:#fff;width:100%;max-width:920px;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.25);padding:18px;max-height:90vh;overflow:auto}
+    .table-input{width:100%;padding:8px;border-radius:6px;border:1px solid #e6eef5}
+
+    /* Editor responsive card view */
+    .items-cards{display:none;gap:10px}
+    .item-card{background:#f8fbff;border:1px solid rgba(6,95,95,0.06);padding:10px;border-radius:8px}
+    @media(max-width:600px){
+      #editorTable{display:none!important}
+      .items-cards{display:flex;flex-direction:column}
+      .modal{max-width:92vw}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand"><div class="logo">AR</div><div><h1>極速車業管理</h1><p class="small">專業保修系統 V2.0</p></div></div>
+      <div class="nav" id="nav">
+        <button class="active" data-tab="dashboard">儀表板</button>
+        <button data-tab="schedule">預約行程</button>
+        <div class="group-title">營運管理</div>
+        <button data-tab="orders">工單與報價</button>
+        <button data-tab="customers">客戶管理</button>
+        <div class="group-title">後勤管理</div>
+        <button data-tab="inventory">零件庫存</button>
+        <button data-tab="purchase">採購管理</button>
+        <button data-tab="equipment">設備管理</button>
+        <div class="group-title">財務與設定</div>
+        <button data-tab="finance">財務與報表</button>
+        <button data-tab="vehicles">車輛管理</button>
+        <button data-tab="settings">系統設定</button>
+      </div>
+      <div class="footer">© 2025 AutoRepair Sys</div>
+    </aside>
+
+    <main class="main">
+      <div class="header">
+        <div class="title"><h2 id="pageTitle">營運總覽</h2><p class="small" id="pageSub">2025/12/03 ｜ 歡迎回來， 管理員</p></div>
+        <div class="controls">
+          <div class="searchbox"><input id="globalSearch" placeholder="搜尋車牌 / 車主 / 項目..." /></div>
+          <button class="btn" id="btnNewOrder">開立新單</button>
+          <button class="btn ghost" id="btnExport">匯出 JSON</button>
+          <button class="btn ghost" id="btnImport">匯入 JSON</button>
+          <button class="btn ghost" id="btnClearAll">清除資料</button>
+        </div>
+      </div>
+
+      <div id="contentArea">
+        <section id="dashboard" class="grid">
+          <div class="col-3 card"><div class="meta small">本月淨利（估算）</div><div style="height:12px"></div><div class="stat"><div class="big" id="statProfit">$0</div><div class="badge">NT$</div></div><div style="height:10px"></div><div class="small">估算：營收 - 支出</div></div>
+          <div class="col-3 card"><div class="meta small">今日預約 / 工單</div><div style="height:12px"></div><div class="big" id="statToday">0</div><div style="height:8px"></div><div class="small">需安排技師人力</div></div>
+          <div class="col-3 card"><div class="meta small">待確認報價</div><div style="height:12px"></div><div class="big" id="statQuotes">0</div><div style="height:8px"></div><div class="small">需追蹤客戶意願</div></div>
+          <div class="col-3 card"><div class="meta small">庫存警示</div><div style="height:12px"></div><div class="big" id="statLowStock">0</div><div style="height:8px"></div><div class="small">低於安全庫存品項</div></div>
+          <div class="col-8 card" style="margin-top:12px"><h3 style="margin-bottom:8px">近期進廠車輛</h3><div id="recentOrders"></div></div>
+          <div class="col-4 card" style="margin-top:12px"><h3 style="margin-bottom:8px">設備保養提醒</h3><div id="equipmentRemind"></div></div>
+          <div class="col-6 card" style="margin-top:12px"><h3 style="margin-bottom:8px">營收趨勢（近 6 個月）</h3><canvas id="revenueChart" height="120"></canvas></div>
+          <div class="col-6 card" style="margin-top:12px"><h3 style="margin-bottom:8px">熱銷零件 TOP 5</h3><div id="topParts"></div></div>
+        </section>
+
+        <section id="orders" style="display:none;margin-top:14px"><div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div><h3>工單與報價</h3><div class="small">管理工單 / 轉工單 / 列印 / 匯出</div></div><div style="display:flex;gap:8px"><button class="btn" id="btnCreateOrder">建立新單</button><button class="btn ghost" id="btnReloadOrders">重新整理</button></div></div><div id="ordersTableContainer"></div></div></section>
+
+        <section id="customers" style="display:none;margin-top:14px"><div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div><h3>客戶管理</h3><div class="small">查看 / 新增 / 搜尋客戶資料與車輛</div></div><div style="display:flex;gap:8px"><button class="btn" id="btnNewCustomer">新增客戶</button></div></div><div id="customersContainer"></div></div></section>
+
+        <section id="inventory" style="display:none;margin-top:14px"><div class="card"><h3>零件庫存</h3><div id="inventoryTable" style="margin-top:12px"></div></div></section>
+
+        <section id="purchase" style="display:none;margin-top:14px"><div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div><h3>採購管理</h3><div class="small">建議採購 / 採購單管理</div></div><div style="display:flex;gap:8px"><button class="btn" id="btnNewPO">建立採購單</button></div></div><div id="purchaseContainer"></div><hr style="margin:12px 0"><h4>採購單列表</h4><div id="poList"></div></div></section>
+
+        <section id="equipment" style="display:none;margin-top:14px"><div class="card"><h3>設備管理</h3><div id="equipmentList" style="margin-top:12px"></div></div></section>
+
+        <section id="finance" style="display:none;margin-top:14px"><div class="card"><h3>財務與報表</h3><div id="financeSummary" style="margin-top:12px"></div></div></section>
+
+        <section id="vehicles" style="display:none;margin-top:14px"><div class="card"><h3>車輛管理</h3><div id="vehiclesContainer" style="margin-top:12px"></div></div></section>
+
+        <section id="settings" style="display:none;margin-top:14px"><div class="card"><h3>系統設定</h3><div style="margin-top:8px"><label class="small">公司名稱</label><input id="cfgCompany" type="text" style="margin-top:6px;padding:10px;border-radius:8px;border:1px solid #e6eef5;width:100%" value="極速汽車專業保修廠"><div style="height:8px"></div><label class="small">營業稅率 (%)</label><input id="cfgTax" type="number" style="margin-top:6px;padding:10px;border-radius:8px;border:1px solid #e6eef5;width:120px" value="5"><div style="height:8px"></div><label class="small">預設工資（每項目）</label><input id="cfgDefaultLabor" type="number" style="margin-top:6px;padding:10px;border-radius:8px;border:1px solid #e6eef5;width:120px" value="0"><div class="small muted" style="margin-top:6px">你選擇自訂工資 (D)；在此輸入預設值，之後可在工單編輯器調整。</div></div></div></section>
+
+      </div>
+    </main>
+  </div>
+
+  <input type="file" id="importFile" accept="application/json" style="display:none" />
+
+  <!-- ORDER EDITOR MODAL -->
+  <div id="orderEditorModal" class="modal-overlay"><div class="modal"><h3 id="orderEditorTitle">工單編輯</h3><div id="orderEditorBody"></div><div style="margin-top:16px;display:flex;gap:10px;justify-content:flex-end"><button class="btn ghost" id="btnCloseOrderEditor">取消</button><button class="btn" id="btnSaveOrderEditor">儲存工單</button></div></div></div>
+
+  <!-- CUSTOMER DETAIL MODAL -->
+  <div id="customerDetailModal" class="modal-overlay"><div class="modal"><h3>客戶詳細資料</h3><div id="customerDetailContent" style="margin-top:14px"></div><div style="margin-top:20px;display:flex;justify-content:flex-end"><button class="btn ghost" id="btnCloseCustomerDetail">關閉</button></div></div></div>
+
+  <script>
+  const LS_KEY = 'ar_car_maintenance_v2';
+  const seedData = { customers:[{id:1,name:'張大明',phone:'0912-345-678',address:'台北市',vehicles:[1,2]},{id:2,name:'李小美',phone:'0988-765-432',address:'新北市',vehicles:[3]}], vehicles:[{id:1,customerId:1,licensePlate:'ABC-1234',brand:'Toyota',model:'Altis',year:2018,mileage:45000},{id:2,customerId:1,licensePlate:'XYZ-9999',brand:'Benz',model:'C300',year:2020,mileage:21000},{id:3,customerId:2,licensePlate:'QQ-5566',brand:'Honda',model:'CR-V',year:2019,mileage:38000}], parts:[{id:1,partNumber:'OIL-001',name:'全合成機油 5W-30',spec:'1L',costPrice:300,sellPrice:600,stock:45,minStock:20},{id:2,partNumber:'FIL-001',name:'機油濾芯',spec:'Toyota專用',costPrice:150,sellPrice:350,stock:12,minStock:15},{id:3,partNumber:'BRK-002',name:'前煞車來令片',spec:'一組',costPrice:1200,sellPrice:2800,stock:5,minStock:5},{id:4,partNumber:'TIR-001',name:'米其林輪胎',spec:'205/55/R16',costPrice:3000,sellPrice:4500,stock:8,minStock:10}], orders:[{id:1,orderNo:'WO-2023120101',type:'WorkOrder',customerId:1,vehicleId:1,date:'2023-12-01',status:'Completed',technicianId:1,invoiceNo:'INV-202312001',items:[{id:1,partId:1,name:'全合成機油 5W-30',spec:'1L',qty:4,price:600,labor:0},{id:2,partId:2,name:'機油濾芯',spec:'Toyota專用',qty:1,price:350,labor:200},{id:3,partId:null,name:'基本保養工資',spec:'',qty:1,price:0,labor:800}],total:3750}], expenses:[{id:1,date:'2023-12-01',category:'租金',description:'廠房租金 - 12月',amount:25000}], equipment:[{id:1,name:'雙柱頂高機 A',type:'維修設備',buyDate:'2020-01-15',nextMaintain:'2024-01-15',status:'Normal'},{id:2,name:'自排油循環清洗機',type:'保養設備',buyDate:'2021-08-10',nextMaintain:'2023-12-25',status:'NeedService'}], config:{company:'極速汽車專業保修廠',tax:5,defaultLabor:0}, purchaseOrders:[] };
+
+  function loadData(){try{const raw=localStorage.getItem(LS_KEY);return raw?JSON.parse(raw):JSON.parse(JSON.stringify(seedData));}catch(e){console.error(e);return JSON.parse(JSON.stringify(seedData));}}
+  function saveData(d){localStorage.setItem(LS_KEY,JSON.stringify(d));renderAll();}
+  function uid(p='id'){return p+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+  if(!localStorage.getItem(LS_KEY)){localStorage.setItem(LS_KEY,JSON.stringify(seedData));}
+
+  function renderAll(){renderDashboard();renderOrders();renderCustomers();renderInventory();renderPurchase();renderEquipment();renderFinance();renderVehicles();const cfg=loadData().config||{};document.getElementById('cfgDefaultLabor').value=cfg.defaultLabor||0}
+
+  function renderDashboard(){const d=loadData();const monthPrefix=new Date().toISOString().slice(0,7);const revenue=d.orders.filter(o=>o.type==='WorkOrder'&&o.status==='Completed'&&o.date.startsWith(monthPrefix)).reduce((s,o)=>s+(o.total||0),0);const todayCount=d.orders.filter(o=>o.date===new Date().toISOString().slice(0,10)).length;const pendingQuotes=d.orders.filter(o=>o.type==='Quotation'&&o.status!=='Converted').length;const lowStockCount=d.parts.filter(p=>p.stock<=p.minStock).length;document.getElementById('statProfit').textContent='$'+revenue.toLocaleString();document.getElementById('statToday').textContent=todayCount;document.getElementById('statQuotes').textContent=pendingQuotes;document.getElementById('statLowStock').textContent=lowStockCount;const recent=d.orders.slice().sort((a,b)=>b.id-a.id).slice(0,5);const recentHtml=recent.map(o=>{const cust=d.customers.find(c=>c.id===o.customerId)||{name:'-'};return`<div class="list-item"><div style="flex:1"><div style="font-weight:700">${o.orderNo} <span style="font-size:12px;color:var(--muted)">• ${o.date}</span></div><div class="muted">${cust.name} • ${o.type}</div></div><div class="badge">${o.status}</div></div>`}).join('');document.getElementById('recentOrders').innerHTML=recentHtml||'<div class="muted">目前無近期工單</div>';const eqHtml=d.equipment.map(eq=>`<div style="padding:10px;border-radius:8px;background:${eq.status==='NeedService'?'#fff5f5':'#f7fffb'};border:1px solid rgba(0,0,0,0.03);margin-bottom:8px"><div style="font-weight:700">${eq.name}</div><div class="muted">下次保養: ${eq.nextMaintain}</div></div>`).join('');document.getElementById('equipmentRemind').innerHTML=eqHtml;const partSales={};d.orders.forEach(o=>o.items.forEach(it=>{if(it.partId){partSales[it.name]=(partSales[it.name]||0)+it.qty;}}));const topParts=Object.entries(partSales).sort((a,b)=>b[1]-a[1]).slice(0,5);document.getElementById('topParts').innerHTML=topParts.length?topParts.map(([name,qty],i=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed rgba(0,0,0,0.03)"><div>${i+1}. ${name}</div><div class="small">${qty} 件</div></div>`).join(''):'<div class="muted">尚無銷售資料</div>';renderRevenueChart(d);} 
+
+  function renderOrders(){const d=loadData();const rows=d.orders.slice().sort((a,b)=>b.id-a.id).map(o=>{const cust=d.customers.find(c=>c.id===o.customerId)||{name:'-'};const veh=d.vehicles.find(v=>v.id===o.vehicleId)||{licensePlate:'-'};return`<tr><td>${o.orderNo}</td><td>${o.type}</td><td>${o.date}</td><td>${cust.name}<div class="muted">${veh.licensePlate}</div></td><td>$${(o.total||0).toLocaleString()}</td><td><span class="badge">${o.status}</span></td><td><button class="btn ghost viewDetail" data-id="${o.id}">查看</button></td></tr>`}).join('');document.getElementById('ordersTableContainer').innerHTML=`<table><thead><tr><th>單號</th><th>類型</th><th>日期</th><th>車主 / 車牌</th><th>金額</th><th>狀態</th><th>操作</th></tr></thead><tbody>${rows}</tbody></table>`;document.querySelectorAll('.viewDetail').forEach(b=>b.addEventListener('click',e=>{const id=Number(e.currentTarget.dataset.id);openOrderDetail(id);}));}
+
+  function renderCustomers(){const d=loadData();const rows=d.customers.map(c=>{const vehs=d.vehicles.filter(v=>v.customerId===c.id);return`<div class="list-item" style="justify-content:space-between"><div style="flex:1"><div style="font-weight:700">${c.name}</div><div class="muted">${c.phone} • ${c.address}</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px"><button class="btn ghost btnCustomerDetail" data-id="${c.id}">檢視</button><div class="small">車輛 ${vehs.length}</div></div></div>`}).join('');document.getElementById('customersContainer').innerHTML=rows||'<div class="muted">目前無客戶</div>';document.querySelectorAll('.btnCustomerDetail').forEach(b=>b.addEventListener('click',e=>{const id=Number(e.currentTarget.dataset.id);openCustomerDetail(id);}));}
+
+  function renderInventory(){const d=loadData();const rows=d.parts.map(p=>`<tr><td>${p.partNumber}</td><td>${p.name}</td><td>${p.spec}</td><td>$${p.costPrice}</td><td>$${p.sellPrice}</td><td style="font-weight:700">${p.stock}</td><td>${p.stock<=p.minStock?'<span class="badge">低庫存</span>':'<span class="badge" style="background:#eef7f7;color:#065f5f">充足</span>'}</td></tr>`).join('');document.getElementById('inventoryTable').innerHTML=`<table><thead><tr><th>料號</th><th>名稱</th><th>規格</th><th>成本</th><th>售價</th><th>庫存</th><th>狀態</th></tr></thead><tbody>${rows}</tbody></table>`}
+
+  function renderPurchase(){const d=loadData();const needs=d.parts.filter(p=>p.stock<=p.minStock);const html=needs.map(p=>`<div style="display:flex;justify-content:space-between;padding:8px;border-bottom:1px dashed rgba(0,0,0,0.03)"><div><div style="font-weight:700">${p.name}</div><div class="muted">現有: ${p.stock} | 安全: ${p.minStock}</div></div><div><button class="btn ghost" data-part="${p.id}">加入採購</button></div></div>`).join('');document.getElementById('purchaseContainer').innerHTML=html||'<div class="muted">目前無建議採購</div>';document.querySelectorAll('#purchaseContainer button').forEach(b=>b.addEventListener('click',e=>{const pid=Number(e.currentTarget.dataset.part);createPOForPart(pid);}));renderPOList();}
+
+  function renderPOList(){const d=loadData();const list=d.purchaseOrders||[];document.getElementById('poList').innerHTML=list.length?list.map(po=>`<div class="list-item"><div style="flex:1"><div style="font-weight:700">${po.poNumber}</div><div class="muted">供應商: ${po.supplier} • ${po.date}</div></div><div style="display:flex;flex-direction:column;gap:6px"><div class="small">$${(po.total||0).toLocaleString()}</div><button class="btn ghost btnPOView" data-id="${po.id}">檢視</button></div></div>`).join(''):'<div class="muted">尚無採購單</div>';document.querySelectorAll('.btnPOView').forEach(b=>b.addEventListener('click',e=>{const id=String(e.currentTarget.dataset.id);const d=loadData();const po=d.purchaseOrders.find(x=>x.id===id);if(po)alert(`採購單: ${po.poNumber}
+供應商: ${po.supplier}
+金額: $${po.total}`);}));}
+
+  function renderEquipment(){const d=loadData();document.getElementById('equipmentList').innerHTML=d.equipment.map(eq=>`<div style="padding:10px;border-bottom:1px dashed rgba(0,0,0,0.03)"><div style="font-weight:700">${eq.name}</div><div class="muted">購入: ${eq.buyDate} • 下次保養: ${eq.nextMaintain}</div></div>`).join('')}
+  function renderFinance(){const d=loadData();const month=new Date().toISOString().slice(0,7);const revenue=d.orders.filter(o=>o.type==='WorkOrder'&&o.status==='Completed'&&o.date.startsWith(month)).reduce((s,o)=>s+(o.total||0),0);const expense=d.expenses.reduce((s,e)=>s+(e.amount||0),0);const profit=revenue-expense;document.getElementById('financeSummary').innerHTML=`<div class="space-y"><div>本月營收: <strong>$${revenue.toLocaleString()}</strong></div><div>總支出: <strong>$${expense.toLocaleString()}</strong></div><div>淨利: <strong>$${profit.toLocaleString()}</strong></div></div>`}
+  function renderVehicles(){const d=loadData();document.getElementById('vehiclesContainer').innerHTML=d.vehicles.map(v=>`<div class="list-item"><div style="flex:1"><div style="font-weight:700">${v.licensePlate} • ${v.brand} ${v.model}</div><div class="muted">里程: ${v.mileage} km • 年份: ${v.year}</div></div><div class="small">車主 #${v.customerId}</div></div>`).join('')}
+
+  // Actions: Export/Import/Clear
+  document.getElementById('btnExport').addEventListener('click',()=>{const blob=new Blob([localStorage.getItem(LS_KEY)||JSON.stringify(seedData,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='car_maintenance_export.json';a.click();URL.revokeObjectURL(url);});
+  document.getElementById('btnImport').addEventListener('click',()=>document.getElementById('importFile').click());
+  document.getElementById('importFile').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const obj=JSON.parse(ev.target.result);if(!obj.orders)throw new Error('格式錯誤');if(!confirm('匯入會覆蓋現有資料，確定嗎？'))return;localStorage.setItem(LS_KEY,JSON.stringify(obj));renderAll();alert('匯入完成');}catch(err){alert('匯入失敗：'+err.message)}};r.readAsText(f);});
+  document.getElementById('btnClearAll').addEventListener('click',()=>{if(!confirm('確定要清除本地所有資料？此動作無法復原。'))return;localStorage.removeItem(LS_KEY);localStorage.setItem(LS_KEY,JSON.stringify(seedData));renderAll();alert('已重置為範例資料');});
+
+  // nav
+  document.getElementById('nav').addEventListener('click',e=>{const btn=e.target.closest('button');if(!btn)return;document.querySelectorAll('#nav button').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const tab=btn.dataset.tab;document.querySelectorAll('main section').forEach(s=>s.style.display='none');document.getElementById(tab).style.display='block';const titleMap={dashboard:'營運總覽',schedule:'預約行程',orders:'工單與報價',customers:'客戶管理',inventory:'零件庫存',purchase:'採購管理',equipment:'設備管理',finance:'財務與報表',vehicles:'車輛管理',settings:'系統設定'};document.getElementById('pageTitle').textContent=titleMap[tab]||'系統';window.scrollTo({top:0,behavior:'smooth'});});
+
+  // search
+  document.getElementById('globalSearch').addEventListener('input',e=>{const q=e.target.value.trim().toLowerCase();if(!q){renderOrders();return}const d=loadData();const results=d.orders.filter(o=>{const cust=d.customers.find(c=>c.id===o.customerId)||{};const veh=d.vehicles.find(v=>v.id===o.vehicleId)||{};const text=`${o.orderNo} ${cust.name||''} ${veh.licensePlate||''} ${o.items.map(i=>i.name).join(' ')}`.toLowerCase();return text.includes(q)});document.getElementById('ordersTableContainer').innerHTML=`<div class="card"><h4>搜尋結果 (${results.length})</h4><div style="margin-top:8px">${results.map(r=>`<div class="list-item"><div style="flex:1"><div style="font-weight:700">${r.orderNo}</div><div class="muted">${r.date} • ${r.type}</div></div><div class="badge">${r.status}</div></div>`).join('')}</div></div>`});
+
+  // PO creation for low stock
+  function createPOForPart(partId){const d=loadData();const part=d.parts.find(p=>p.id===partId);if(!part)return alert('找不到零件');const po={id:uid('po_'),poNumber:'PO-'+(new Date().toISOString().slice(0,10).replace(/-/g,''))+'-'+Math.floor(Math.random()*100),supplier:'建利材料行',date:new Date().toISOString().slice(0,10),status:'Draft',items:[{partId:part.id,name:part.name,qty: (part.minStock*2) }],total:part.sellPrice*(part.minStock*2)};d.purchaseOrders=d.purchaseOrders||[];d.purchaseOrders.push(po);saveData(d);alert('已建立採購單草案');}
+
+  // open order detail -> open editor
+  function openOrderDetail(id){const d=loadData();const o=d.orders.find(x=>x.id===id);if(!o)return alert('找不到資料');openOrderEditor(o);} 
+
+  function renderRevenueChart(d){const labels=[];const totals=[];const now=new Date();for(let i=5;i>=0;i--){const dt=new Date(now.getFullYear(),now.getMonth()-i,1);const key=dt.toISOString().slice(0,7);labels.push(`${dt.getFullYear()}/${String(dt.getMonth()+1).padStart(2,'0')}`);const total=d.orders.filter(o=>o.type==='WorkOrder'&&o.status==='Completed'&&o.date.startsWith(key)).reduce((s,o)=>s+(o.total||0),0);totals.push(total);}const ctx=document.getElementById('revenueChart').getContext('2d');if(window.revenueChart){window.revenueChart.data.labels=labels;window.revenueChart.data.datasets[0].data=totals;window.revenueChart.update();return;}window.revenueChart=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'營收',data:totals,fill:true,tension:0.3,backgroundColor:'rgba(6,182,212,0.12)',borderColor:'rgba(6,182,212,0.95)',pointRadius:3}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=> '$'+v.toLocaleString()}}}}});}
+
+  // ---------- Order Editor (桌機表格 + 手機卡片) ----------
+  const modalOverlay=document.getElementById('orderEditorModal');const orderEditorBody=document.getElementById('orderEditorBody');const btnCloseOrderEditor=document.getElementById('btnCloseOrderEditor');const btnSaveOrderEditor=document.getElementById('btnSaveOrderEditor');btnCloseOrderEditor.addEventListener('click',()=>{modalOverlay.style.display='none'});
+
+  function openOrderEditor(orderOrOpts){
+    const d=loadData();const cfg=d.config||{};const defaultLabor=Number(cfg.defaultLabor||0);const customers=d.customers;const vehicles=d.vehicles;const parts=d.parts;let isEdit=false;let order=null;
+    if(orderOrOpts && orderOrOpts.id){isEdit=true;order=JSON.parse(JSON.stringify(orderOrOpts));} else if(orderOrOpts && orderOrOpts.customerId){ // called with preselected customer
+      order={id:null,orderNo:'WO-'+new Date().toISOString().slice(0,10).replace(/-/g,'')+'-'+Math.floor(Math.random()*100),type:'WorkOrder',customerId:orderOrOpts.customerId,vehicleId:orderOrOpts.vehicleId||null,date:new Date().toISOString().slice(0,10),status:'Pending',technicianId:null,items:[],total:0};isEdit=false;order.items.push({id:uid('it_'),partId:null,name:'',spec:'',qty:1,price:0,labor:defaultLabor});
+    } else if(!orderOrOpts){order={id:null,orderNo:'WO-'+new Date().toISOString().slice(0,10).replace(/-/g,'')+'-'+Math.floor(Math.random()*100),type:'WorkOrder',customerId:customers[0]?.id||null,vehicleId:vehicles.find(v=>v.customerId===customers[0]?.id)?.id||null,date:new Date().toISOString().slice(0,10),status:'Pending',technicianId:null,items:[],total:0};order.items.push({id:uid('it_'),partId:null,name:'',spec:'',qty:1,price:0,labor:defaultLabor});}
+
+    // build HTML
+    let html='';html+=`<div style="display:flex;gap:12px;flex-wrap:wrap">`;
+    html+=`<div style="flex:1;min-width:220px"><label class=\"small muted\">客戶</label><select id=\"editorCustomer\" class=\"table-input\">${customers.map(c=>`<option value=\"${c.id}\" ${c.id===order.customerId?'selected':''}>${c.name} (${c.phone})</option>`).join('')}</select></div>`;
+    const vehOptions=vehicles.filter(v=>v.customerId===order.customerId);html+=`<div style="flex:1;min-width:160px"><label class=\"small muted\">車輛</label><select id=\"editorVehicle\" class=\"table-input\">${vehOptions.map(v=>`<option value=\"${v.id}\">${v.licensePlate} - ${v.brand} ${v.model}</option>`).join('')}</select></div>`;
+    html+=`<div style="flex:1;min-width:140px"><label class=\"small muted\">日期</label><input id=\"editorDate\" type=\"date\" class=\"table-input\" value=\"${order.date}\"></div>`;
+    html+=`<div style="flex:1;min-width:160px"><label class=\"small muted\">類型</label><select id=\"editorType\" class=\"table-input\"><option value=\"WorkOrder\" ${order.type==='WorkOrder'?'selected':''}>工單</option><option value=\"Quotation\" ${order.type==='Quotation'?'selected':''}>報價</option></select></div>`;
+    html+=`<div style="flex:1;min-width:160px"><label class=\"small muted\">狀態</label><select id=\"editorStatus\" class=\"table-input\"><option value=\"Pending\" ${order.status==='Pending'?'selected':''}>待確認</option><option value=\"InProgress\" ${order.status==='InProgress'?'selected':''}>施工中</option><option value=\"Completed\" ${order.status==='Completed'?'selected':''}>已完工</option><option value=\"Converted\" ${order.status==='Converted'?'selected':''}>已轉工單</option><option value=\"Closed\" ${order.status==='Closed'?'selected':''}>已結案</option></select></div>`;
+    html+=`</div>`;
+    // items table
+    html+=`<div style="margin-top:12px"><h4>明細項目</h4><div id=\"editorItemsWrap\">`;
+    html+=`<div id=\"editorTable\" style=\"overflow:auto\"><table style=\"min-width:760px;border-collapse:collapse\"><thead><tr><th>#</th><th>零件 (選填)</th><th>項目內容</th><th>規格</th><th>數量</th><th>單價</th><th>工資</th><th>小計</th><th></th></tr></thead><tbody>`;
+    order.items.forEach((it,idx)=>{html+=`<tr data-itemid=\"${it.id}\"><td style=\"width:30px;text-align:center\">${idx+1}</td><td><select class=\"table-input editor-part-select\"><option value=\"\">- 手動輸入 -</option>${parts.map(p=>`<option value=\"${p.id}\" ${p.id===it.partId?'selected':''}>${p.partNumber} • ${p.name} (庫:${p.stock})</option>`).join('')}</select></td><td><input class=\"table-input editor-name\" value=\"${escapeHtml(it.name)}\"></td><td><input class=\"table-input editor-spec\" value=\"${escapeHtml(it.spec)}\"></td><td><input type=\"number\" class=\"table-input editor-qty\" value=\"${it.qty}\" min=\"1\"></td><td><input type=\"number\" class=\"table-input editor-price\" value=\"${it.price}\" min=\"0\"></td><td><input type=\"number\" class=\"table-input editor-labor\" value=\"${it.labor||defaultLabor}\" min=\"0\"></td><td class=\"small\" style=\"font-weight:700\">$${((it.price||0)*(it.qty||1)) + (it.labor||0)}</td><td><button class=\"btn ghost btnRemoveItem\">刪除</button></td></tr>`});
+    html+=`</tbody></table></div>`;
+    // mobile cards container
+    html+=`<div class=\"items-cards\" id=\"itemsCards\"></div>`;
+    html+=`<div style=\"margin-top:8px;display:flex;gap:8px\"><button class=\"btn\" id=\"btnAddItem\">＋ 新增項目</button><button class=\"btn ghost\" id=\"btnPrintOrder\">列印工單</button><div class=\"small muted\" style=\"margin-left:auto\">總計：<span id=\"editorTotal\">$0</span></div></div>`;
+    html+=`</div></div>`;
+    orderEditorBody.innerHTML=html;modalOverlay.style.display='flex';
+
+    // attach events
+    const editorCustomer=document.getElementById('editorCustomer');const editorVehicle=document.getElementById('editorVehicle');const editorDate=document.getElementById('editorDate');const editorType=document.getElementById('editorType');const editorStatus=document.getElementById('editorStatus');const editorTable=document.getElementById('editorTable');const itemsCards=document.getElementById('itemsCards');
+    editorCustomer.addEventListener('change',()=>{const cid=Number(editorCustomer.value);const vehSel=vehicles.filter(v=>v.customerId===cid);editorVehicle.innerHTML=vehSel.map(v=>`<option value=\"${v.id}\">${v.licensePlate} - ${v.brand} ${v.model}</option>`).join('');});
+
+    document.getElementById('btnAddItem').addEventListener('click',()=>{const tbody=editorTable.querySelector('tbody');const newId=uid('it_');const rowCount=tbody.querySelectorAll('tr').length+1;const row=document.createElement('tr');row.setAttribute('data-itemid',newId);row.innerHTML=`<td style=\"width:30px;text-align:center\">${rowCount}</td><td><select class=\"table-input editor-part-select\"><option value=\"\">- 手動輸入 -</option>${parts.map(p=>`<option value=\"${p.id}\">${p.partNumber} • ${p.name} (庫:${p.stock})</option>`).join('')}</select></td><td><input class=\"table-input editor-name\" value=\"\"></td><td><input class=\"table-input editor-spec\" value=\"\"></td><td><input type=\"number\" class=\"table-input editor-qty\" value=\"1\" min=\"1\"></td><td><input type=\"number\" class=\"table-input editor-price\" value=\"0\" min=\"0\"></td><td><input type=\"number\" class=\"table-input editor-labor\" value=\"${defaultLabor}\" min=\"0\"></td><td class=\"small\" style=\"font-weight:700\">$0</td><td><button class=\"btn ghost btnRemoveItem\">刪除</button></td>`;tbody.appendChild(row);attachRowEvents(row,parts);recalcEditorTotal();renderItemsCards();});
+
+    editorTable.querySelectorAll('tbody tr').forEach(r=>attachRowEvents(r,parts));
+
+    function attachRowEvents(row,parts){const partSel=row.querySelector('.editor-part-select');const nameInp=row.querySelector('.editor-name');const specInp=row.querySelector('.editor-spec');const qtyInp=row.querySelector('.editor-qty');const priceInp=row.querySelector('.editor-price');const laborInp=row.querySelector('.editor-labor');const subtotalCell=row.querySelector('td:nth-last-child(2)');const btnRemove=row.querySelector('.btnRemoveItem');partSel.addEventListener('change',()=>{const pid=Number(partSel.value);const p=parts.find(x=>x.id===pid);if(p){nameInp.value=p.name;specInp.value=p.spec;priceInp.value=p.sellPrice;}recalcRow();recalcEditorTotal();renderItemsCards();});[nameInp,specInp,qtyInp,priceInp,laborInp].forEach(el=>el.addEventListener('input',()=>{recalcRow();recalcEditorTotal();renderItemsCards();}));btnRemove.addEventListener('click',()=>{row.remove();renumberRows();recalcEditorTotal();renderItemsCards();});function recalcRow(){const q=Number(qtyInp.value)||0;const p=Number(priceInp.value)||0;const l=Number(laborInp.value)||0;const sub=q*p + l;subtotalCell.textContent='$'+sub;} }
+
+    function renumberRows(){const rows=editorTable.querySelectorAll('tbody tr');rows.forEach((r,i)=>{r.querySelector('td').textContent = i+1;});}
+    function recalcEditorTotal(){const rows=editorTable.querySelectorAll('tbody tr');let total=0;rows.forEach(r=>{const qty=Number(r.querySelector('.editor-qty').value)||0;const price=Number(r.querySelector('.editor-price').value)||0;const labor=Number(r.querySelector('.editor-labor').value)||0;total += qty*price + labor;});document.getElementById('editorTotal').textContent = '$' + total.toLocaleString();return total}
+
+    // mobile cards render
+    function renderItemsCards(){const rows=editorTable.querySelectorAll('tbody tr');itemsCards.innerHTML='';rows.forEach((r,i)=>{const partId=r.querySelector('.editor-part-select').value;const name=r.querySelector('.editor-name').value;const spec=r.querySelector('.editor-spec').value;const qty=r.querySelector('.editor-qty').value;const price=r.querySelector('.editor-price').value;const labor=r.querySelector('.editor-labor').value;const sub=(Number(qty)*Number(price))+Number(labor);const card=document.createElement('div');card.className='item-card';card.innerHTML=`<div style="display:flex;justify-content:space-between"><div style="font-weight:700">${name||'(未命名項目)'}</div><div style="font-weight:700">$${sub}</div></div><div class="muted">數量: ${qty} • 單價: $${price} • 工資: $${labor}</div><div style="margin-top:6px" class="small">規格: ${spec}</div>`;itemsCards.appendChild(card);});}
+
+    renderItemsCards();window.addEventListener('resize',()=>{renderItemsCards();});
+
+    // Print order
+    document.getElementById('btnPrintOrder').addEventListener('click',()=>{const custId=Number(editorCustomer.value);const cust = customers.find(c=>c.id===custId);const vehId=Number(editorVehicle.value);const veh = vehicles.find(v=>v.id===vehId);const rows=editorTable.querySelectorAll('tbody tr');let itemsHtml='';rows.forEach((r,i)=>{const name=r.querySelector('.editor-name').value;const spec=r.querySelector('.editor-spec').value;const qty=r.querySelector('.editor-qty').value;const price=r.querySelector('.editor-price').value;const labor=r.querySelector('.editor-labor').value;const sub=(Number(qty)*Number(price))+Number(labor);itemsHtml += `<tr><td>${i+1}</td><td>${name}</td><td>${spec}</td><td>${qty}</td><td>$${price}</td><td>$${labor}</td><td>$${sub}</td></tr>`});const total=recalcEditorTotal();const printHtml = `<!doctype html><html><head><meta charset="utf-8"><title>${order.orderNo}</title><style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse}th,td{padding:8px;border:1px solid #ddd;text-align:left}h2{margin-bottom:6px}</style></head><body><h2>工單 ${order.orderNo}</h2><div>客戶: ${cust?.name||''} • ${cust?.phone||''}</div><div>車輛: ${veh?.licensePlate||''} • ${veh?.brand||''} ${veh?.model||''}</div><div style="height:10px"></div><table><thead><tr><th>#</th><th>項目</th><th>規格</th><th>數量</th><th>單價</th><th>工資</th><th>小計</th></tr></thead><tbody>${itemsHtml}</tbody></table><div style="margin-top:12px;font-weight:700">總計： $${total}</div></body></html>`;const w=window.open('','_blank');w.document.write(printHtml);w.document.close();w.focus();setTimeout(()=>w.print(),500);});
+
+    // Save
+    btnSaveOrderEditor.onclick = ()=>{
+      const d=loadData();const custId=Number(editorCustomer.value);const vehId=Number(editorVehicle.value);const date=editorDate.value;const type=editorType.value;const status=editorStatus.value;const rows=editorTable.querySelectorAll('tbody tr');const items=Array.from(rows).map(r=>({id:r.getAttribute('data-itemid'),partId:r.querySelector('.editor-part-select').value?Number(r.querySelector('.editor-part-select').value):null,name:r.querySelector('.editor-name').value,spec:r.querySelector('.editor-spec').value,qty:Number(r.querySelector('.editor-qty').value)||0,price:Number(r.querySelector('.editor-price').value)||0,labor:Number(r.querySelector('.editor-labor').value)||0}));const total=items.reduce((s,it)=>s + (it.qty*it.price) + (it.labor||0),0);
+      if(!custId) return alert('請選擇客戶'); if(!vehId) return alert('請選擇車輛');
+
+      // existing order update or create
+      let prevStatus=null; if(order && order.id){const idx=d.orders.findIndex(x=>x.id===order.id);if(idx>=0){prevStatus=d.orders[idx].status;d.orders[idx]=Object.assign({},d.orders[idx],{customerId:custId,vehicleId:vehId,date,type,status,items,total});} } else {const newOrder={id:Date.now(),orderNo:order.orderNo,type,customerId:custId,vehicleId:vehId,date,status,technicianId:null,items,total};d.orders.unshift(newOrder);} 
+
+      // If status changed to Completed (either newly saved as Completed, or creating order with Completed), deduct stock
+      if(status==='Completed'){
+        // for each item with partId, deduct
+        const shortages = [];
+        items.forEach(it=>{ if(it.partId){ const p = d.parts.find(x=>x.id===it.partId); if(p){ const before = p.stock; p.stock = (p.stock || 0) - it.qty; if(p.stock < 0){ // allow negative but record shortage
+              shortages.push({part:p, shortage: Math.abs(p.stock)});
+            }
+            // if below minStock, create PO draft
+            if(p.stock <= p.minStock){ // create PO if not exists
+              const exist = (d.purchaseOrders||[]).some(po=>po.items && po.items.some(pi=>pi.partId===p.id));
+              if(!exist){ const po={id:uid('po_'),poNumber:'PO-'+(new Date().toISOString().slice(0,10).replace(/-/g,''))+'-'+Math.floor(Math.random()*100),supplier:'建利材料行',date:new Date().toISOString().slice(0,10),status:'Draft',items:[{partId:p.id,name:p.name,qty: (p.minStock*2)}],total: p.sellPrice*(p.minStock*2) }; d.purchaseOrders=d.purchaseOrders||[]; d.purchaseOrders.push(po); }
+            }
+        }}});
+        if(shortages.length){ const msg = shortages.map(s=>`${s.part.name} 短缺 ${s.shortage} 件`).join('
+'); alert('警告：庫存不足
+'+msg+'
+系統已建立採購草案(若尚未)或請手動補貨。'); }
+      }
+
+      saveData(d); modalOverlay.style.display='none';alert('工單已儲存');}
+  }
+
+  // Customer detail
+  const customerModal=document.getElementById('customerDetailModal');const customerDetailContent=document.getElementById('customerDetailContent');const btnCloseCustomerDetail=document.getElementById('btnCloseCustomerDetail');btnCloseCustomerDetail.addEventListener('click',()=>{customerModal.style.display='none'});
+  function openCustomerDetail(customerId){const d=loadData();const c=d.customers.find(x=>x.id===customerId);if(!c)return alert('找不到客戶');const vehicles=d.vehicles.filter(v=>v.customerId===c.id);const orders=d.orders.filter(o=>o.customerId===c.id).sort((a,b)=>b.id-a.id);let html='';html+=`<div style="display:flex;gap:12px;flex-wrap:wrap"><div style="flex:1"><h4>${c.name}</h4><div class=\"muted\">${c.phone} • ${c.address}</div></div><div style="display:flex;gap:8px"><button class=\"btn\" id=\"btnCustomerNewOrder\">為此客戶建立工單</button></div></div>`;html+=`<hr style=\"margin:12px 0\"><h4>車輛</h4>`;html+=vehicles.map(v=>`<div class=\"list-item\"><div style=\"flex:1\"><div style=\"font-weight:700\">${v.licensePlate} • ${v.brand} ${v.model}</div><div class=\"muted\">里程: ${v.mileage} km</div></div><div class=\"small\">#${v.id}</div></div>`).join('')||'<div class="muted">無車輛</div>';html+=`<hr style=\"margin:12px 0\"><h4>歷史工單</h4>`;html+=orders.map(o=>`<div class=\"list-item\"><div style=\"flex:1\"><div style=\"font-weight:700\">${o.orderNo}</div><div class=\"muted\">${o.date} • ${o.type}</div></div><div style=\"display:flex;flex-direction:column;gap:6px;align-items:flex-end\"><div class=\"small\">$${(o.total||0).toLocaleString()}</div><button class=\"btn ghost btnOpenOrderFromCustomer\" data-id=\"${o.id}\">查看</button></div></div>`).join('')||'<div class="muted">無歷史工單</div>';customerDetailContent.innerHTML=html;customerModal.style.display='flex';document.getElementById('btnCustomerNewOrder').addEventListener('click',()=>{customerModal.style.display='none';openOrderEditor({customerId:c.id,vehicleId:vehicles[0]?.id||null});});document.querySelectorAll('.btnOpenOrderFromCustomer').forEach(b=>b.addEventListener('click',e=>{const id=Number(e.currentTarget.dataset.id);customerModal.style.display='none';openOrderEditor(loadData().orders.find(o=>o.id===id));}));}
+
+  function escapeHtml(s){if(!s)return'';return String(s).replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+  // settings: save default labor
+  document.getElementById('cfgDefaultLabor').addEventListener('change',e=>{const d=loadData();d.config=d.config||{};d.config.defaultLabor=Number(e.target.value)||0;saveData(d);alert('預設工資已更新');});
+
+  // bind create buttons
+  document.getElementById('btnCreateOrder').addEventListener('click',()=>openOrderEditor());document.getElementById('btnNewOrder').addEventListener('click',()=>{document.querySelector('#nav button[data-tab="orders"]').click();});document.getElementById('btnReloadOrders').addEventListener('click',()=>renderOrders());
+
+  // attach purchase container buttons when rendered
+  document.addEventListener('click',function(e){if(e.target&&e.target.matches('#purchaseContainer button')){}});
+
+  // initial render
+  renderAll();
+
+  // expose for debug
+  window.renderAll = renderAll;
+  </script>
+</body>
+</html>
